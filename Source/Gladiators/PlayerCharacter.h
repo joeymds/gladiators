@@ -14,11 +14,11 @@ class GLADIATORS_API APlayerCharacter : public AArenaCharacter
 
 public:
 
-	virtual void BeginPlay() override;
-	
-	virtual void Tick(float DeltaSeconds) override;
+	UPROPERTY(BlueprintReadOnly)
+	float Health = 100.f;
 
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	bool bAddedOverlapToWeapon;
+	bool bCanDetectCollision;
 
 protected:
 
@@ -28,9 +28,22 @@ protected:
 	void Mouse_Y(float Value);
 	
 public:
+
+	virtual void BeginPlay() override;
+	
+	virtual void Tick(float DeltaSeconds) override;
+
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
 	UFUNCTION()
 	virtual void OnBeginOverlap(UPrimitiveComponent* OverlapComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
 
+	UFUNCTION()
+	virtual void OnWeaponBeginOverlap(UPrimitiveComponent* OverlapComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bSweepFrom, const FHitResult &SweepResult);
+
 	void TriggerAttack();
+
+	bool ApplyDamage();
+	void RestartGame();
+	
 };

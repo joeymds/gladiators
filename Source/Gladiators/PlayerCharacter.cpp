@@ -4,8 +4,11 @@
 
 #include "PickableItemBase.h"
 #include "PickableWeapon.h"
+#include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "AICharacter.h"
+#include "Kismet/GameplayStatics.h"
 
 void APlayerCharacter::BeginPlay()
 {
@@ -18,7 +21,21 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	
+
+	if (bIsAttacking)
+	{
+		if (WeaponCollider != nullptr)
+		{
+			WeaponCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		}
+	}
+	else
+	{
+		if (WeaponCollider != nullptr)
+		{
+			WeaponCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+	}
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -79,13 +96,44 @@ void APlayerCharacter::Mouse_Y(float Value)
 
 void APlayerCharacter::TriggerAttack()
 {
+	if (!bIsAlive)
+		return;
+	
 	if (MyWeapon)
 	{
+		if (!bAddedOverlapToWeapon)
+		{
+			bAddedOverlapToWeapon = true;
+			WeaponCollider->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacter::OnWeaponBeginOverlap);
+		}
+
+		bCanDetectCollision = true;
 		Attack();	
 	}
 }
 
-void APlayerCharacter::OnBeginOverlap(UPrimitiveComponent* OverlapComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+bool APlayerCharacter::ApplyDamage()
+{
+	Health -= 10.f;
+	if (Health <= 0.f)
+	{
+		bIsAlive = false;
+
+		FTimerHandle UnusedHandle;
+		GetWorldTimerManager().SetTimer(UnusedHandle, this, &APlayerCharacter::RestartGame, 3.0f, false);
+		
+		return true;
+	}
+	return false;
+}
+
+void APlayerCharacter::RestartGame()
+{
+	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
+}
+
+void APlayerCharacter::OnBeginOverlap(UPrimitiveComponent* OverlapComp, AActor* OtherActor,
+                                      UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (OtherActor->ActorHasTag("Shield"))
 	{
@@ -99,3 +147,22 @@ void APlayerCharacter::OnBeginOverlap(UPrimitiveComponent* OverlapComp, AActor* 
 		PickWeapon(PickedWeapon);
 	}
 }
+
+void APlayerCharacter::OnWeaponBeginOverlap(UPrimitiveComponent* OverlapComp, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bSweepFrom, const FHitResult& SweepResult)
+{
+	if (OtherActor->ActorHasTag("Enemy"))
+	{
+		if (bCanDetectCollision)
+		{
+			bCanDetectCollision = false;
+			AAICharacter* EnemyChar = Cast<AAICharacter>(OtherActor);
+			if (bool bEnemyDead = EnemyChar->ApplyDamage())
+			{
+				FTimerHandle UnusedHandle;
+				GetWorldTimerManager().SetTimer(UnusedHandle, this, &APlayerCharacter::RestartGame, 3.0f, false);
+			}
+		}
+	}
+}
+

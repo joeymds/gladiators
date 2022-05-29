@@ -3,8 +3,11 @@
 
 #include "AICharacter.h"
 
+#include "AIController.h"
+#include "BrainComponent.h"
 #include "PickableItemBase.h"
 #include "PickableWeapon.h"
+#include "PlayerCharacter.h"
 #include "Components/BoxComponent.h"
 
 AAICharacter::AAICharacter()
@@ -72,8 +75,26 @@ void AAICharacter::CreateAndAttachWeapons()
 
 void AAICharacter::TriggerAttack()
 {
+	if (bDisableAttack)
+		return;
+	
 	bCanDetectCollision = true;
 	Attack();
+}
+
+bool AAICharacter::ApplyDamage()
+{
+	Health -= 10.f;
+	if (Health <= 0.f)
+	{
+		bIsAlive = false;
+		AAIController* MyAIRef = Cast<AAIController>(GetController());
+		// MyAIRef->BrainComponent->StopLogic(""); // another option
+		MyAIRef->UnPossess();
+		
+		return true;
+	}
+	return false;
 }
 
 void AAICharacter::OnWeaponBeginOverlap(UPrimitiveComponent* OverlapComp, AActor* OtherActor,
@@ -85,7 +106,11 @@ void AAICharacter::OnWeaponBeginOverlap(UPrimitiveComponent* OverlapComp, AActor
 		if (bCanDetectCollision)
 		{
 			bCanDetectCollision = false;
-			UE_LOG(LogTemp, Warning, TEXT("Collided with player"));
+			APlayerCharacter* Player = Cast<APlayerCharacter>(OtherActor);
+			bool bCanAttack = Player->ApplyDamage();
+
+			bDisableAttack = bCanAttack;
 		}
 	}
 }
+

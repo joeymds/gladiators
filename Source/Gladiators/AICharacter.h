@@ -22,6 +22,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<APickableWeapon> Weapon;
 
+	UPROPERTY(BlueprintReadOnly)
+	float Health = 100.f;
+	
 	bool bCanDetectCollision;
 	bool bDisableAttack;
 	
@@ -40,5 +43,7 @@ public:
 
 	UFUNCTION()
 	virtual void OnWeaponBeginOverlap(UPrimitiveComponent* OverlapComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bSweepFrom, const FHitResult &SweepResult);
+
+	bool ApplyDamage();
 	
 };
